@@ -33,9 +33,7 @@ export function Layout({ children, actions, brandHref = "/" }: LayoutProps) {
       <main id="conteudo">{children}</main>
       <footer className="site-footer">
         <div className="wrap">
-          <p>
-            Demonstração local. Os PDFs ficam na pasta <code>uploads</code> e o acesso é feito só com o código do link.
-          </p>
+          <p>Atesta · entrega de atestados</p>
         </div>
       </footer>
     </>

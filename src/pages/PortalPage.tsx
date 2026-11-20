@@ -41,6 +41,7 @@ export function PortalPage({ code }: PortalPageProps) {
   }, [normalized]);
 
   const selected = entrega?.arquivos.find((arquivo) => arquivo.id === selectedId) ?? null;
+  const onlyOne = entrega?.arquivos.length === 1;
 
   function download(arquivo: Arquivo) {
     if (!entrega) return;
@@ -65,14 +66,45 @@ export function PortalPage({ code }: PortalPageProps) {
             </a>
           </div>
         ) : null}
-        {entrega ? (
+        {entrega && selected && onlyOne ? (
+          <div className="portal-layout">
+            <div className="portal-copy">
+              <p className="eyebrow">Código {entrega.codigoFormatado}</p>
+              <h1>{entrega.paciente}</h1>
+              <p className="lede">
+                {entrega.observacao ? `${entrega.observacao}. ` : ""}
+                Enviado em {formatDate(entrega.criadoEm)}.
+              </p>
+              <article className="single-file">
+                <h2>{selected.nome}</h2>
+                <p>{formatBytes(selected.tamanho)}</p>
+                <button type="button" className="button" onClick={() => download(selected)}>
+                  Baixar PDF
+                </button>
+                <a
+                  className="text-link"
+                  href={`/api/acesso/${entrega.codigo}/arquivos/${selected.id}?ver=1`}
+                  target="_blank"
+                  rel="noopener"
+                >
+                  Abrir no navegador
+                </a>
+              </article>
+            </div>
+            <aside className="preview">
+              <p>Pré-visualização</p>
+              <iframe title="Pré-visualização do atestado" src={`/api/acesso/${entrega.codigo}/arquivos/${selected.id}?ver=1`} />
+            </aside>
+          </div>
+        ) : null}
+        {entrega && !onlyOne ? (
           <>
             <p className="eyebrow">Código {entrega.codigoFormatado}</p>
             <div className="portal-head">
-              <h1>Atestados de {entrega.paciente}</h1>
-              <p id="portal-note">
-                {entrega.observacao ? `${entrega.observacao} ` : ""}
-                Enviado em {formatDate(entrega.criadoEm)}.
+              <h1>{entrega.paciente}</h1>
+              <p>
+                {entrega.observacao ? `${entrega.observacao}. ` : ""}
+                Escolha o atestado e baixe o PDF. Enviado em {formatDate(entrega.criadoEm)}.
               </p>
             </div>
             <div className="portal-layout">
@@ -97,23 +129,11 @@ export function PortalPage({ code }: PortalPageProps) {
                 <div className="download-bar">
                   <div>
                     <strong>{selected ? selected.nome : "Selecione um atestado"}</strong>
-                    <span>{selected ? formatBytes(selected.tamanho) : "Escolha o PDF para baixar"}</span>
+                    <span>{selected ? formatBytes(selected.tamanho) : "Toque no documento para escolher"}</span>
                   </div>
-                  <div className="bar-actions">
-                    {selected ? (
-                      <a
-                        className="button ghost"
-                        href={`/api/acesso/${entrega.codigo}/arquivos/${selected.id}?ver=1`}
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        Abrir
-                      </a>
-                    ) : null}
-                    <button type="button" className="button" disabled={!selected} onClick={() => selected && download(selected)}>
-                      Baixar PDF
-                    </button>
-                  </div>
+                  <button type="button" className="button" disabled={!selected} onClick={() => selected && download(selected)}>
+                    Baixar PDF
+                  </button>
                 </div>
               </div>
               <aside className="preview">

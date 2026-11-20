@@ -20,7 +20,7 @@ export function AdminPage() {
   const [dragOver, setDragOver] = useState(false);
   const [qr, setQr] = useState<Entrega | null>(null);
   const [toast, setToast] = useState("");
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const resultRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     document.title = "Atesta · Área da clínica";
@@ -31,6 +31,10 @@ export function AdminPage() {
     const timer = window.setTimeout(() => setToast(""), 2800);
     return () => window.clearTimeout(timer);
   }, [toast]);
+
+  useEffect(() => {
+    if (qr) resultRef.current?.scrollIntoView({ block: "start" });
+  }, [qr]);
 
   async function loadEntregas() {
     const data = await api<{ entregas: Entrega[] }>("/api/admin/entregas");
@@ -60,12 +64,6 @@ export function AdminPage() {
       active = false;
     };
   }, []);
-
-  function openQr(entrega: Entrega) {
-    setQr(entrega);
-    const dialog = dialogRef.current;
-    if (dialog && !dialog.open) dialog.showModal();
-  }
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -117,6 +115,7 @@ export function AdminPage() {
   async function onLogout() {
     await api("/api/admin/logout", { method: "POST" });
     setEntregas([]);
+    setQr(null);
     setPhase("login");
   }
 
@@ -124,7 +123,8 @@ export function AdminPage() {
     event.preventDefault();
     setPatientError("");
     setFileError("");
-    const data = new FormData(event.currentTarget);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     const paciente = String(data.get("paciente") || "").trim().replace(/\s+/g, " ");
     const observacao = String(data.get("observacao") || "").trim();
     if (paciente.length < 2) {
@@ -136,7 +136,6 @@ export function AdminPage() {
       return;
     }
 
-    const form = event.currentTarget;
     const body = new FormData();
     body.set("paciente", paciente);
     body.set("observacao", observacao);
@@ -147,8 +146,8 @@ export function AdminPage() {
       form.reset();
       setFiles([]);
       await loadEntregas();
-      openQr(result.entrega);
-      setToast("Link e QR Code prontos.");
+      setQr(result.entrega);
+      setToast("QR Code pronto para enviar.");
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Não foi possível enviar.");
     } finally {
@@ -166,10 +165,11 @@ export function AdminPage() {
   }
 
   async function removeEntrega(entrega: Entrega) {
-    const confirmed = window.confirm(`Excluir os atestados de ${entrega.paciente}? Os PDFs saem da pasta uploads.`);
+    const confirmed = window.confirm(`Excluir os atestados de ${entrega.paciente}?`);
     if (!confirmed) return;
     try {
       await api(`/api/admin/entregas/${entrega.id}`, { method: "DELETE" });
+      if (qr?.id === entrega.id) setQr(null);
       setToast("Entrega excluída.");
       await loadEntregas();
     } catch (error) {
@@ -206,16 +206,10 @@ export function AdminPage() {
         {phase === "checking" ? <p className="status">Carregando…</p> : null}
 
         {phase === "login" ? (
-          <section className="login-layout">
-            <div className="login-copy">
-              <p className="eyebrow">Área da clínica</p>
-              <h1>Envie o atestado e entregue o QR Code.</h1>
-              <p className="lede">
-                Login de demonstração, sem banco de dados. Os PDFs ficam na pasta <code>uploads</code> deste projeto.
-              </p>
-            </div>
+          <section className="narrow">
+            <p className="eyebrow">Área da clínica</p>
+            <h1>Entrar</h1>
             <form className="panel" onSubmit={(event) => void onLogin(event)} noValidate>
-              <h2>Entrar</h2>
               <label>
                 Usuário
                 <input name="usuario" autoComplete="username" required defaultValue="admin" />
@@ -228,25 +222,58 @@ export function AdminPage() {
               <button type="submit" className="button" disabled={loggingIn}>
                 {loggingIn ? "Entrando…" : "Entrar"}
               </button>
-              <p className="demo-note">
-                Use <strong>admin</strong> e <strong>atesta123</strong>. A sessão vale só até reiniciar o servidor.
-              </p>
+              <p className="demo-note">Demonstração: admin / atesta123</p>
             </form>
           </section>
         ) : null}
 
         {phase === "app" ? (
           <section>
-            <div className="admin-head">
-              <div>
-                <p className="eyebrow">Painel</p>
-                <h1>Entregas</h1>
+            {qr ? (
+              <article className="result" ref={resultRef} aria-labelledby="qr-heading">
+                <div className="result-copy">
+                  <p className="eyebrow">Pronto para enviar</p>
+                  <h1 id="qr-heading">{qr.paciente}</h1>
+                  <p className="lede">Mostre ou envie esta imagem. A legenda já está no QR Code.</p>
+                  <input className="link-field" readOnly value={qr.link} aria-label="Link do paciente" onFocus={(event) => event.target.select()} />
+                  <div className="result-actions">
+                    <button type="button" className="button" onClick={() => void copyLink(qr.link)}>
+                      Copiar link
+                    </button>
+                    <a className="button ghost" href={`/api/admin/entregas/${qr.id}/qr.png`} download={`atesta-${qr.codigoFormatado}.png`}>
+                      Baixar imagem
+                    </a>
+                    <a
+                      className="button ghost"
+                      href={`https://wa.me/?text=${encodeURIComponent(`Olá, ${qr.paciente}. Seus atestados já podem ser baixados neste link: ${qr.link}`)}`}
+                      target="_blank"
+                      rel="noopener"
+                    >
+                      WhatsApp
+                    </a>
+                  </div>
+                  <button type="button" className="text-link button-reset" onClick={() => setQr(null)}>
+                    Nova entrega
+                  </button>
+                </div>
+                <img
+                  src={`/api/admin/entregas/${qr.id}/qr.png?v=${qr.criadoEm}`}
+                  alt={`QR Code Atesta de ${qr.paciente}, código ${qr.codigoFormatado}. Aponte a câmera para baixar o atestado.`}
+                />
+              </article>
+            ) : (
+              <div className="admin-head">
+                <div>
+                  <p className="eyebrow">Clínica</p>
+                  <h1>Nova entrega</h1>
+                </div>
+                <p className="stats">{entregas.length ? countLabel : "Nenhuma entrega"}</p>
               </div>
-              <p className="stats">{entregas.length ? countLabel : "Nenhuma entrega"}</p>
-            </div>
+            )}
+
             <div className="admin-grid">
-              <form className="panel" onSubmit={(event) => void onUpload(event)} noValidate>
-                <h2>Novo envio</h2>
+              <form id="nova-entrega" className="panel" onSubmit={(event) => void onUpload(event)} noValidate>
+                <h2>Dados do envio</h2>
                 <label>
                   Nome do paciente
                   <input name="paciente" maxLength={80} placeholder="Maria Souza" />
@@ -254,7 +281,7 @@ export function AdminPage() {
                 {patientError ? <p className="field-error">{patientError}</p> : null}
                 <label>
                   Observação <span className="optional">opcional</span>
-                  <input name="observacao" maxLength={240} placeholder="Consulta de 19/11 · clínica geral" />
+                  <input name="observacao" maxLength={240} placeholder="Consulta de retorno" />
                 </label>
                 <div
                   className={dragOver ? "dropzone is-dragover" : "dropzone"}
@@ -277,9 +304,9 @@ export function AdminPage() {
                     }}
                   />
                   <p>
-                    <strong>Solte os PDFs aqui</strong> ou clique para escolher.
+                    <strong>Adicionar PDFs</strong>
                   </p>
-                  <p className="hint">Até 5 arquivos, 8 MB cada. Só PDF.</p>
+                  <p className="hint">Até 5 arquivos, 8 MB cada.</p>
                 </div>
                 {files.length ? (
                   <ul className="file-list">
@@ -288,10 +315,7 @@ export function AdminPage() {
                         <span>
                           {file.name} · {formatBytes(file.size)}
                         </span>
-                        <button
-                          type="button"
-                          onClick={() => setFiles((current) => current.filter((item) => item !== file))}
-                        >
+                        <button type="button" onClick={() => setFiles((current) => current.filter((item) => item !== file))}>
                           Remover
                         </button>
                       </li>
@@ -300,7 +324,7 @@ export function AdminPage() {
                 ) : null}
                 {fileError ? <p className="field-error">{fileError}</p> : null}
                 <button type="submit" className="button" disabled={sending}>
-                  {sending ? "Enviando…" : "Gerar link e QR Code"}
+                  {sending ? "Gerando…" : "Gerar QR Code"}
                 </button>
               </form>
 
@@ -309,20 +333,11 @@ export function AdminPage() {
                   <h2 id="lista-titulo">Enviados</h2>
                   <label className="search">
                     <span className="vh">Buscar paciente</span>
-                    <input
-                      type="search"
-                      placeholder="Buscar paciente"
-                      value={busca}
-                      onChange={(event) => setBusca(event.target.value)}
-                    />
+                    <input type="search" placeholder="Buscar" value={busca} onChange={(event) => setBusca(event.target.value)} />
                   </label>
                 </div>
                 {!visible.length ? (
-                  <p className="empty-list">
-                    {entregas.length
-                      ? "Nenhum paciente com esse nome."
-                      : "Nenhuma entrega ainda. Envie o primeiro PDF para gerar um QR Code."}
-                  </p>
+                  <p className="empty-list">{entregas.length ? "Nenhum paciente com esse nome." : "Nenhuma entrega ainda."}</p>
                 ) : (
                   <ul className="delivery-list">
                     {visible.map((entrega) => (
@@ -333,14 +348,10 @@ export function AdminPage() {
                             {entrega.codigoFormatado} · {entrega.arquivos.length === 1 ? "1 PDF" : `${entrega.arquivos.length} PDFs`} ·{" "}
                             {formatDate(entrega.criadoEm, "short")}
                           </p>
-                          <p>{entrega.arquivos.map((arquivo) => arquivo.nome).join(", ")}</p>
                         </div>
                         <div className="delivery-actions">
-                          <button type="button" className="chip" onClick={() => openQr(entrega)}>
-                            QR Code
-                          </button>
-                          <button type="button" className="chip" onClick={() => void copyLink(entrega.link)}>
-                            Copiar link
+                          <button type="button" className="chip" onClick={() => setQr(entrega)}>
+                            Ver QR
                           </button>
                           <button type="button" className="danger" onClick={() => void removeEntrega(entrega)}>
                             Excluir
@@ -355,46 +366,6 @@ export function AdminPage() {
           </section>
         ) : null}
       </div>
-
-      <dialog
-        className="qr-dialog"
-        ref={dialogRef}
-        aria-labelledby="qr-heading"
-        onClick={(event) => {
-          if (event.target === dialogRef.current) dialogRef.current?.close();
-        }}
-        onClose={() => setQr(null)}
-      >
-        {qr ? (
-          <>
-            <p className="eyebrow">Pronto para enviar</p>
-            <h2 id="qr-heading">{qr.paciente}</h2>
-            <p className="hint">{qr.observacao || "Mostre o QR Code ou envie o link para o paciente."}</p>
-            <img src={`/api/admin/entregas/${qr.id}/qr.png`} alt={`QR Code do link de ${qr.paciente}`} width={280} height={280} />
-            <p className="code-pill">{qr.codigoFormatado}</p>
-            <input className="link-field" readOnly value={qr.link} onFocus={(event) => event.target.select()} />
-            <div className="dialog-actions">
-              <button type="button" className="button" onClick={() => void copyLink(qr.link)}>
-                Copiar link
-              </button>
-              <a className="button ghost" href={`/api/admin/entregas/${qr.id}/qr.png`} download={`qr-${qr.codigoFormatado}.png`}>
-                Baixar QR
-              </a>
-              <a
-                className="button ghost"
-                href={`https://wa.me/?text=${encodeURIComponent(`Olá, ${qr.paciente}. Seus atestados já podem ser baixados neste link: ${qr.link}`)}`}
-                target="_blank"
-                rel="noopener"
-              >
-                WhatsApp
-              </a>
-            </div>
-            <button type="button" className="text-link button-reset close-dialog" onClick={() => dialogRef.current?.close()}>
-              Fechar
-            </button>
-          </>
-        ) : null}
-      </dialog>
       <div className={toast ? "toast show" : "toast"} role="status" aria-live="polite">
         {toast}
       </div>

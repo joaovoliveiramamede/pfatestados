@@ -4,8 +4,8 @@ import http from "http";
 import path from "path";
 import express, { type NextFunction, type Request, type Response } from "express";
 import multer from "multer";
-import QRCode from "qrcode";
 import { createServer as createViteServer } from "vite";
+import { renderQrCard } from "./qr-card";
 
 const PORT = Number(process.env.PORT) || 3000;
 const ROOT = path.resolve(__dirname, "..");
@@ -350,14 +350,13 @@ api.get("/admin/entregas/:id/qr.png", requireAdmin, async (req, res, next) => {
     if (!isHexId(id)) throw new HttpError(404, "Entrega não encontrada.");
     const entrega = loadEntregas().find((item) => item.id === id);
     if (!entrega) throw new HttpError(404, "Entrega não encontrada.");
-    const png = await QRCode.toBuffer(linkFor(req, entrega.codigo), {
-      width: 640,
-      margin: 1,
-      errorCorrectionLevel: "M",
-      color: { dark: "#0a4f4a", light: "#ffffff" },
+    const png = await renderQrCard({
+      url: linkFor(req, entrega.codigo),
+      paciente: entrega.paciente,
+      codigo: formatCode(entrega.codigo),
     });
     res.setHeader("Content-Type", "image/png");
-    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.setHeader("Cache-Control", "private, no-store");
     res.send(png);
   } catch (error) {
     next(error);
