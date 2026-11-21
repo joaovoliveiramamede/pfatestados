@@ -1,23 +1,28 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { configuracao } from "../../composition";
+import { formatarCodigo, normalizarCodigo } from "../../domain/codigo";
 import { Layout } from "../components/Layout";
-import { formatCode, normalizeCode } from "../format";
 
 export function HomePage() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    document.title = configuracao.clinica;
+  }, []);
+
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const normalized = normalizeCode(code);
+    const normalized = normalizarCodigo(code);
     if (normalized.length !== 8) {
       setError("Digite os 8 caracteres do código.");
       return;
     }
-    window.location.href = `/acesso/${normalized}`;
+    window.location.hash = `/acesso/${normalized}`;
   }
 
   return (
-    <Layout actions={<a className="text-link" href="/admin">Área da clínica</a>}>
+    <Layout clinica={configuracao.clinica} actions={<a className="text-link" href="#/medico">Área do médico</a>}>
       <section className="wrap narrow">
         <p className="eyebrow">Atestado</p>
         <h1>Baixar o PDF</h1>
@@ -36,7 +41,7 @@ export function HomePage() {
               placeholder="AB3K-7PQM"
               value={code}
               onChange={(event) => {
-                setCode(formatCode(event.target.value));
+                setCode(formatarCodigo(event.target.value));
                 setError("");
               }}
             />

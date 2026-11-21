@@ -1,0 +1,32 @@
+[
+  {
+    "id": "a32a7a434406bddb",
+    "codigo": "4FF8F7Q5",
+    "paciente": "João Vitor",
+    "observacao": "",
+    "criadoEm": "2026-11-21T15:07:00.027Z",
+    "arquivos": [
+      {
+        "id": "69d49ce8a0fc485f",
+        "nome": "atestado-consulta.pdf",
+        "tamanho": 69,
+        "caminho": "uploads/4FF8F7Q5/69d49ce8a0fc485f.pdf"
+      }
+    ]
+  },
+  {
+    "id": "af1be1d11d9fa654",
+    "codigo": "WYWQXL3Z",
+    "paciente": "Mariaaa",
+    "observacao": "",
+    "criadoEm": "2026-11-21T15:17:26.655Z",
+    "arquivos": [
+      {
+        "id": "8cf28d85c4faad0f",
+        "nome": "consulta.pdf",
+        "tamanho": 582,
+        "caminho": "uploads/WYWQXL3Z/8cf28d85c4faad0f.pdf"
+      }
+    ]
+  }
+]

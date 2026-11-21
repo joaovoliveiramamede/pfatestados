@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 
 type LayoutProps = {
+  clinica: string;
   children: ReactNode;
   actions?: ReactNode;
   brandHref?: string;
 };
 
-export function Layout({ children, actions, brandHref = "/" }: LayoutProps) {
+export function Layout({ clinica, children, actions, brandHref = "#/" }: LayoutProps) {
   return (
     <>
       <a className="skip" href="#conteudo">
@@ -25,15 +26,15 @@ export function Layout({ children, actions, brandHref = "/" }: LayoutProps) {
                 <rect x="20.1" y="21.7" width="2.2" height="2.2" fill="#fff" />
               </svg>
             </span>
-            Atesta
+            {clinica}
           </a>
-          <div className="header-actions">{actions}</div>
+          <nav className="header-actions">{actions}</nav>
         </div>
       </header>
       <main id="conteudo">{children}</main>
       <footer className="site-footer">
         <div className="wrap">
-          <p>Atesta · entrega de atestados</p>
+          <p>{clinica} · entrega de atestados</p>
         </div>
       </footer>
     </>
