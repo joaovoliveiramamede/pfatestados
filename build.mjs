@@ -3,21 +3,23 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 function appConfig(dir) {
+  const env = { DOCTOR_CODE: "MEDICO-2026", CLINIC_NAME: "Atesta" };
   const file = path.join(dir, ".env");
-  if (!fs.existsSync(file)) throw new Error("Crie o arquivo .env com DOCTOR_CODE e CLINIC_NAME.");
-  const env = {};
-  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
-    const index = trimmed.indexOf("=");
-    if (index === -1) continue;
-    const key = trimmed.slice(0, index).trim();
-    const value = trimmed.slice(index + 1).trim().replace(/^["']|["']$/g, "");
-    if (key) env[key] = value;
+  if (fs.existsSync(file)) {
+    for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#")) continue;
+      const index = trimmed.indexOf("=");
+      if (index === -1) continue;
+      const key = trimmed.slice(0, index).trim();
+      const value = trimmed.slice(index + 1).trim().replace(/^["']|["']$/g, "");
+      if (key && value) env[key] = value;
+    }
   }
-  const codigoMedico = String(env.DOCTOR_CODE || "").trim();
-  if (!codigoMedico) throw new Error("Defina DOCTOR_CODE no arquivo .env.");
-  return { codigoMedico, clinica: String(env.CLINIC_NAME || "").trim() || "Atesta" };
+  return {
+    codigoMedico: env.DOCTOR_CODE,
+    clinica: env.CLINIC_NAME,
+  };
 }
 
 const root = path.resolve(import.meta.dirname);

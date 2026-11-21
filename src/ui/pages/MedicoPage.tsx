@@ -219,6 +219,7 @@ export function MedicoPage() {
               <button type="submit" className="button">
                 Entrar
               </button>
+              <p className="hint">Código de demonstração: {configuracao.codigoMedico}</p>
             </form>
           </section>
         ) : (
