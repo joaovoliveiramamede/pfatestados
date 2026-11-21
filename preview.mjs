@@ -197,6 +197,7 @@ function criarEntrega(partes) {
   }
 
   const registro = { id, codigo, paciente, observacao, criadoEm: new Date().toISOString(), arquivos: salvos };
+  fs.writeFileSync(path.join(pasta, "entrega.json"), `${JSON.stringify(registro)}\n`, "utf8");
   registros.push(registro);
   gravarRegistros(registros);
   return registro;
@@ -227,7 +228,7 @@ function disposicao(nome) {
 function arquivoUpload(pathname) {
   if (pathname === "/uploads/registros.json") return registrosPath;
   const relativo = pathname.replace(/^\/uploads\//, "");
-  if (!/^[A-Z0-9]{8}\/[a-f0-9]{16}\.pdf$/.test(relativo)) return null;
+  if (!/^[A-Z0-9]{8}\/(?:[a-f0-9]{16}\.pdf|entrega\.json)$/.test(relativo)) return null;
   const arquivo = path.resolve(uploads, ...relativo.split("/"));
   const base = path.resolve(uploads);
   if (arquivo !== base && !arquivo.startsWith(`${base}${path.sep}`)) return null;

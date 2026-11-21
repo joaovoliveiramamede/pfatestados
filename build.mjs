@@ -16,9 +16,19 @@ function appConfig(dir) {
       if (key && value) env[key] = value;
     }
   }
+  const s3 =
+    env.S3_BUCKET && env.S3_REGION && env.S3_ACCESS_KEY_ID && env.S3_SECRET_ACCESS_KEY
+      ? {
+          bucket: env.S3_BUCKET,
+          region: env.S3_REGION,
+          accessKeyId: env.S3_ACCESS_KEY_ID,
+          secretAccessKey: env.S3_SECRET_ACCESS_KEY,
+        }
+      : null;
   return {
     codigoMedico: env.DOCTOR_CODE,
     clinica: env.CLINIC_NAME,
+    s3,
   };
 }
 

@@ -2,7 +2,7 @@ import type { RepositorioEntrega } from "../application/repositorio-entrega";
 import type { NovaEntrega, Registro } from "../domain/tipos";
 
 const AVISO_PUBLICADO =
-  "Neste site publicado não dá para incluir um PDF novo. Os atestados da lista usam Ver QR. Para um atestado novo, gere no computador com npm start, faça o build e envie a pasta dist outra vez.";
+  "Este site ainda não grava o PDF. Coloque o bucket e a chave S3 no .env, faça o build e envie a pasta dist outra vez.";
 
 function ehHtml(texto: string, tipo: string | null) {
   return (tipo || "").includes("text/html") || texto.trimStart().startsWith("<");
@@ -30,6 +30,22 @@ export const repositorioHttp: RepositorioEntrega = {
     }
     if (!Array.isArray(dados)) throw new Error("Não foi possível carregar os atestados.");
     return dados as Registro[];
+  },
+  async obter(codigo: string) {
+    const resposta = await fetch(`/uploads/${codigo}/entrega.json`, { cache: "no-store" });
+    if (resposta.ok) {
+      const texto = await resposta.text();
+      if (!ehHtml(texto, resposta.headers.get("content-type"))) {
+        try {
+          const dados = JSON.parse(texto) as Registro;
+          if (dados && dados.codigo === codigo) return dados;
+        } catch {
+          /* a lista publica continua valendo */
+        }
+      }
+    }
+    const registros = await this.listar();
+    return registros.find((item) => item.codigo === codigo) ?? null;
   },
   async criar(entrega: NovaEntrega, codigoMedico: string) {
     const body = new FormData();

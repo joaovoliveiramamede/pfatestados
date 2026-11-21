@@ -43,8 +43,7 @@ export function criarCasos(repositorio: RepositorioEntrega, links: Links, sessao
     async obter(codigo: string): Promise<Entrega | null> {
       const normalizado = normalizarCodigo(codigo);
       if (normalizado.length !== 8) return null;
-      const registros = await repositorio.listar();
-      const registro = registros.find((item) => item.codigo === normalizado);
+      const registro = await repositorio.obter(normalizado);
       return registro ? publicar(registro) : null;
     },
     async criar(input: { paciente: string; observacao: string; arquivos: File[] }): Promise<Entrega> {
