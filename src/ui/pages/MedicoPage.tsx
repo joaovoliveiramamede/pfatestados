@@ -133,9 +133,13 @@ export function MedicoPage() {
       });
       form.reset();
       setFiles([]);
-      setEntregas(await casos.listar());
       setQr(entrega);
       setToast("QR Code pronto para enviar.");
+      try {
+        setEntregas(await casos.listar());
+      } catch {
+        setToast("QR Code pronto. Atualize a página se a lista não aparecer.");
+      }
     } catch (error) {
       setFileError(error instanceof Error ? error.message : "Não foi possível enviar.");
     } finally {

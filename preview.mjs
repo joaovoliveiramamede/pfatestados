@@ -76,7 +76,12 @@ function responder(res, status, corpo) {
 }
 
 function lerRegistros() {
-  const dados = JSON.parse(fs.readFileSync(registrosPath, "utf8"));
+  let dados;
+  try {
+    dados = JSON.parse(fs.readFileSync(registrosPath, "utf8").replace(/^\uFEFF/, ""));
+  } catch {
+    throw Object.assign(new Error("Não foi possível ler os atestados salvos."), { status: 500 });
+  }
   if (!Array.isArray(dados)) throw Object.assign(new Error("Não foi possível ler os atestados."), { status: 500 });
   return dados;
 }
@@ -84,7 +89,8 @@ function lerRegistros() {
 function gravarRegistros(registros) {
   const temporario = `${registrosPath}.tmp`;
   fs.writeFileSync(temporario, `${JSON.stringify(registros, null, 2)}\n`, "utf8");
-  fs.renameSync(temporario, registrosPath);
+  fs.copyFileSync(temporario, registrosPath);
+  fs.rmSync(temporario, { force: true });
 }
 
 function ehPdf(buffer) {
@@ -134,9 +140,9 @@ function partesMultipart(buffer, tipo) {
 }
 
 function campo(cabecalho, nome) {
-  const estrela = cabecalho.match(new RegExp(`${nome}\\*=UTF-8''([^;\\r\\n]+)`, "i"));
+  const estrela = cabecalho.match(new RegExp(`(?:^|;)\\s*${nome}\\*=UTF-8''([^;\\r\\n]+)`, "i"));
   if (estrela) return decodeURIComponent(estrela[1]);
-  const simples = cabecalho.match(new RegExp(`${nome}="([^"]*)"`, "i"));
+  const simples = cabecalho.match(new RegExp(`(?:^|;)\\s*${nome}="([^"]*)"`, "i"));
   return simples ? simples[1] : "";
 }
 
@@ -306,7 +312,9 @@ const server = http.createServer(async (req, res) => {
       return responder(res, 200, { ok: true });
     }
 
-    if (req.method !== "GET" && req.method !== "HEAD") return responder(res, 404, { erro: "Rota não encontrada." });
+    if (pathname.startsWith("/api/") || (req.method !== "GET" && req.method !== "HEAD")) {
+      return responder(res, 404, { erro: "Rota não encontrada." });
+    }
     if (pathname.startsWith("/uploads/")) return enviarArquivo(req, res, arquivoUpload(pathname));
     return enviarArquivo(req, res, arquivoDist(pathname));
   } catch (error) {
