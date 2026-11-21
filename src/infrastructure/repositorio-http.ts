@@ -1,18 +1,20 @@
 import type { RepositorioEntrega } from "../application/repositorio-entrega";
 import type { NovaEntrega, Registro } from "../domain/tipos";
 
-async function lerJson(resposta: Response) {
-  const texto = await resposta.text();
-  try {
-    return JSON.parse(texto) as unknown;
-  } catch {
-    throw new Error("Não foi possível gerar o QR Code. Rode o site com npm start e use esse endereço local.");
-  }
+const AVISO_PUBLICADO =
+  "Neste site publicado não dá para incluir um PDF novo. Os atestados da lista usam Ver QR. Para um atestado novo, gere no computador com npm start, faça o build e envie a pasta dist outra vez.";
+
+function ehHtml(texto: string, tipo: string | null) {
+  return (tipo || "").includes("text/html") || texto.trimStart().startsWith("<");
 }
 
-async function lerErro(resposta: Response) {
-  const dados = await lerJson(resposta).catch(() => null);
-  if (dados && typeof dados === "object" && "erro" in dados && typeof dados.erro === "string") return dados.erro;
+function mensagemErro(texto: string) {
+  try {
+    const dados = JSON.parse(texto) as { erro?: unknown };
+    if (dados && typeof dados.erro === "string") return dados.erro;
+  } catch {
+    return AVISO_PUBLICADO;
+  }
   return "Não foi possível gravar o PDF na pasta uploads. Use o site local e publique de novo.";
 }
 
@@ -39,14 +41,20 @@ export const repositorioHttp: RepositorioEntrega = {
       headers: { "X-Codigo-Medico": codigoMedico },
       body,
     });
-    if (!resposta.ok) throw new Error(await lerErro(resposta));
-    return (await lerJson(resposta)) as Registro;
+    const texto = await resposta.text();
+    if (!resposta.ok || ehHtml(texto, resposta.headers.get("content-type"))) throw new Error(mensagemErro(texto));
+    try {
+      return JSON.parse(texto) as Registro;
+    } catch {
+      throw new Error(AVISO_PUBLICADO);
+    }
   },
   async excluir(id: string, codigoMedico: string) {
     const resposta = await fetch(`/api/entregas/${id}`, {
       method: "DELETE",
       headers: { "X-Codigo-Medico": codigoMedico },
     });
-    if (!resposta.ok) throw new Error(await lerErro(resposta));
+    const texto = await resposta.text();
+    if (!resposta.ok || ehHtml(texto, resposta.headers.get("content-type"))) throw new Error(mensagemErro(texto));
   },
 };
